@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "topix1000-disclosure-platform"
+version = "0.1.0"
+description = "TOPIX 1000 disclosure monitoring platform scaffold"
+requires-python = "==3.12.13"
+dependencies = [
+  "fastapi==0.129.2",
+  "sqlalchemy==2.0.48",
+  "alembic==1.18.4",
+  "pydantic==2.12.5",
+  "pydantic-settings==2.11.0",
+  "psycopg[binary]==3.3.3",
+  "lxml==6.0.0",
+  "uvicorn[standard]==0.42.0",
+  "httpx==0.28.1",
+  "pandas==2.2.3",
+  "python-dotenv==1.1.0",
+  "tenacity==9.1.2",
+  "pytest==8.3.5",
+  "pytest-asyncio==0.26.0",
+  "ruff==0.13.2",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+pythonpath = [
+  "packages/common/src",
+  "apps/edinet_ingest/src",
+  "apps/tdnet_monitor/src",
+]
+testpaths = [
+  "packages/common/tests",
+  "apps/edinet_ingest/tests",
+  "apps/tdnet_monitor/tests",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

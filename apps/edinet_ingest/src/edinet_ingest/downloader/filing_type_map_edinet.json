@@ -1,0 +1,32 @@
+[
+  {
+    "filing_type_key": "annual_securities_report",
+    "form_code": "030000",
+    "doc_type_code": null,
+    "filing_type_raw": "annual_securities_report"
+  },
+  {
+    "filing_type_key": "semiannual_report",
+    "form_code": "043000",
+    "doc_type_code": null,
+    "filing_type_raw": "semiannual_report"
+  },
+  {
+    "filing_type_key": "extraordinary_report",
+    "form_code": "050000",
+    "doc_type_code": null,
+    "filing_type_raw": "extraordinary_report"
+  },
+  {
+    "filing_type_key": "large_shareholding_report",
+    "form_code": "350000",
+    "doc_type_code": null,
+    "filing_type_raw": "large_shareholding_report"
+  },
+  {
+    "filing_type_key": "amendment_report",
+    "form_code": "140000",
+    "doc_type_code": null,
+    "filing_type_raw": "amendment_report"
+  }
+]

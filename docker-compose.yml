@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:17.9
+    container_name: topix1000-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: topix1000_disclosure
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: Asia/Tokyo
+      PGTZ: Asia/Tokyo
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    expose:
+      - "5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d topix1000_disclosure"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
