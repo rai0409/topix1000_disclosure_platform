@@ -88,7 +88,7 @@ uv run ruff check .
 ### Windows 側元ファイルを WSL fixture にコピーする例
 ```bash
 mkdir -p apps/edinet_ingest/tests/fixtures
-cp /mnt/c/Users/raira/Desktop/project/Group1-report/1414/Xbrl_Search_20250709_185613.zip \
+cp /path/to/Xbrl_Search_20250709_185613.zip \
   apps/edinet_ingest/tests/fixtures/Xbrl_Search_20250709_185613.zip
 ```
 
