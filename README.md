@@ -316,14 +316,15 @@ The current phase focuses on making EDINET retrieval reproducible and operable:
 - failures are logged
 - retry / backfill workflows are possible
 
-## License
-
-This project is licensed under the MIT License.  
-See the [LICENSE](./LICENSE) file for details.
-
 The next logical steps are:
 1. harden the EDINET CSV normalization pipeline
 2. complete company / EDINET / ticker mapping
 3. add TOPIX 1000 universe management
 4. implement TDnet ingestion
 5. build the serving / alerting layer
+
+## License
+
+This project is licensed under the RAI NON-COMMERCIAL SOURCE-AVAILABLE LICENSE v1.0.  
+Commercial use is prohibited without prior written permission.  
+See the [LICENSE](./LICENSE) file for details.
