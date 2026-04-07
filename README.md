@@ -70,7 +70,8 @@ This repository is intended to serve as the foundation for a disclosure data ETL
 ├── docs/
 ├── docker-compose.yml
 ├── pyproject.toml
-└── .env.example
+├── .env.example
+└── LICENSE
 ```
 
 ### apps
@@ -314,6 +315,11 @@ The current phase focuses on making EDINET retrieval reproducible and operable:
 - job state is tracked
 - failures are logged
 - retry / backfill workflows are possible
+
+## License
+
+This project is licensed under the MIT License.  
+See the [LICENSE](./LICENSE) file for details.
 
 The next logical steps are:
 1. harden the EDINET CSV normalization pipeline
