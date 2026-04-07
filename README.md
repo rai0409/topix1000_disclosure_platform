@@ -1,52 +1,192 @@
 # topix1000_disclosure_platform
 
-TOPIX 1000 を対象 universe とする開示監視基盤の monorepo scaffold です。  
-この phase は **EDINET 先行** で、**TDnet は skeleton のみ** 実装しています。
+An early-stage disclosure monitoring platform for the TOPIX 1000 universe.
 
-## 必要バージョン
-- Ubuntu 24.04 LTS
-- Python 3.12.13
-- PostgreSQL 17.9
-- uv
+The current primary track of this repository is **EDINET ingest / raw archive / database persistence**.  
+**TDnet is implemented only as a skeleton** at this stage, and production-grade ingestion logic for TDnet is not included yet.
 
-## 初期セットアップ
-1. `.env` を作成
+This repository is intended to serve as the foundation for a disclosure data ETL and monitoring platform, including:
+
+- EDINET list API retrieval
+- EDINET document retrieval (`original.zip`, `document.pdf`, `csv.zip`)
+- raw file storage with path / hash tracking
+- fetch job / request log / ingest log persistence
+- database tables for downstream normalization and analytics
+- FastAPI-based health and readiness endpoints
+
+---
+
+## Current status
+
+### Implemented
+
+#### EDINET ingest
+- `fetch_list` CLI for EDINET list API retrieval
+- `fetch_docs` CLI for EDINET document retrieval
+- `backfill` CLI for date-range backfill
+- `doc_id`-based fetch job management
+- raw file persistence for:
+  - `list_response.json`
+  - `original.zip`
+  - `document.pdf`
+  - `csv.zip`
+- invalid CSV response handling with:
+  - `csv_error.json`
+
+#### API / service
+- `edinet_ingest` FastAPI app
+- `tdnet_monitor` FastAPI skeleton
+- `/healthz`
+- `/readyz` (database connectivity check)
+
+#### Database
+- EDINET list response persistence
+- EDINET fetch job persistence
+- filing type mapping
+- request / ingest / parse / normalize log table group
+- raw EDINET CSV facts table (`edinet_facts_raw_csv`)
+
+### Not implemented yet
+- TDnet scraping / ingestion
+- company master seed import
+- TOPIX 1000 constituent import / maintenance
+- company ↔ EDINET code mapping completion
+- downstream serving API for disclosures
+- alerting / notification workflow
+- dashboard / UI
+
+---
+
+## Repository layout
+
+```text
+.
+├── alembic/
+├── apps/
+│   ├── edinet_ingest/
+│   └── tdnet_monitor/
+├── packages/
+│   └── common/
+├── docs/
+├── docker-compose.yml
+├── pyproject.toml
+└── .env.example
+```
+
+### apps
+
+- `apps/edinet_ingest`
+  - EDINET ingest service
+  - CLI entrypoints
+  - downloader implementation
+  - tests
+- `apps/tdnet_monitor`
+  - TDnet monitor skeleton
+  - health endpoints only at this stage
+
+### packages/common
+
+Shared components:
+- settings
+- DB engine / session
+- ORM models
+- common schemas
+- logging utilities
+
+---
+
+## Tech stack
+
+- Python `3.12.13`
+- FastAPI
+- SQLAlchemy 2.x
+- Alembic
+- PostgreSQL
+- `uv`
+- `httpx`
+- `pandas`
+
+---
+
+## Environment
+
+Create `.env` from `.env.example`.
+
 ```bash
 cp .env.example .env
 ```
 
-2. 依存インストール
+Example:
+
+```env
+APP_ENV=local
+TZ=Asia/Tokyo
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:55432/topix1000_disclosure
+RAW_STORAGE_ROOT=/home/rai/data/topix1000_disclosure/raw
+EDINET_API_KEY=
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+SMTP_FROM=
+GENERIC_WEBHOOK_URL=
+LOG_LEVEL=INFO
+APP_DEBUG=false
+```
+
+---
+
+## Setup
+
+### 1. Install dependencies
+
 ```bash
 uv sync
 ```
 
-3. PostgreSQL 起動
+### 2. Start PostgreSQL
+
 ```bash
 docker compose up -d
 docker compose ps
 ```
 
-※ `5432` が競合する場合は `POSTGRES_PORT=55432 docker compose up -d` を利用してください。
+If port `5432` is already in use:
 
-4. マイグレーション適用
+```bash
+POSTGRES_PORT=55432 docker compose up -d
+```
+
+### 3. Apply migrations
+
 ```bash
 uv run alembic upgrade head
 ```
 
-## アプリ起動
-`common` と各 app の `src` layout を使うため、起動時は `PYTHONPATH` を指定します。
+---
 
-### edinet_ingest
+## Run services
+
+Because this repository uses `packages/common/src` and app-local `src` layouts, set `PYTHONPATH` explicitly.
+
+### EDINET ingest
+
 ```bash
-PYTHONPATH=packages/common/src:apps/edinet_ingest/src uv run uvicorn edinet_ingest.main:app --host 0.0.0.0 --port 8000
+PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
+uv run uvicorn edinet_ingest.main:app --host 0.0.0.0 --port 8000
 ```
 
-### tdnet_monitor
+### TDnet monitor skeleton
+
 ```bash
-PYTHONPATH=packages/common/src:apps/tdnet_monitor/src uv run uvicorn tdnet_monitor.main:app --host 0.0.0.0 --port 8001
+PYTHONPATH=packages/common/src:apps/tdnet_monitor/src \
+uv run uvicorn tdnet_monitor.main:app --host 0.0.0.0 --port 8001
 ```
 
-## ヘルスチェック
+---
+
+## Health checks
+
 ```bash
 curl -s http://127.0.0.1:8000/healthz
 curl -s http://127.0.0.1:8000/readyz
@@ -55,100 +195,129 @@ curl -s http://127.0.0.1:8001/healthz
 curl -s http://127.0.0.1:8001/readyz
 ```
 
-- `/healthz`: プロセス生存確認 (200)
-- `/readyz`: DB 接続確認成功時に 200
+- `/healthz`: process liveness
+- `/readyz`: database connectivity
 
-## raw storage path の説明
-- raw ZIP/PDF/HTML は `RAW_STORAGE_ROOT`（例: `/home/rai/data/topix1000_disclosure/raw`）配下に保存する前提です。
-- DB には raw 本体は保存せず、`source_archives` に metadata（パス・ハッシュ・サイズ・取得時刻）だけ保存します。
+---
 
-## 開発補助
-### テスト
+## EDINET CLI
+
+### Fetch list API for a date
+
+```bash
+PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
+uv run python -m edinet_ingest.cli.fetch_list --date 2026-03-20
+```
+
+### Fetch documents for a date
+
+```bash
+PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
+uv run python -m edinet_ingest.cli.fetch_docs --date 2026-03-20
+```
+
+### Backfill a date range
+
+```bash
+PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
+uv run python -m edinet_ingest.cli.backfill --from 2026-03-20 --to 2026-03-22
+```
+
+### Behavior when `EDINET_API_KEY` is missing
+
+If `EDINET_API_KEY` is not set, the CLI exits with a clear error and status code `2`.
+
+---
+
+## Raw storage layout
+
+Raw files are stored under `RAW_STORAGE_ROOT`.
+
+Example layout:
+
+```text
+/home/rai/data/topix1000_disclosure/raw/edinet/{yyyy}/{mm}/{dd}/{doc_id}/
+├── list_response.json
+├── original.zip
+├── document.pdf
+├── csv.zip
+└── csv_error.json   # only when the CSV response is invalid
+```
+
+The database stores metadata and file paths, while raw bodies remain on the filesystem.
+
+---
+
+## Database model overview
+
+Current important tables include:
+
+- `edinet_list_responses`
+  - list API response metadata per `doc_id`
+- `edinet_fetch_jobs`
+  - per-document fetch execution state
+- `filing_type_map`
+  - filing type resolution map
+- `edinet_facts_raw_csv`
+  - normalized raw facts extracted from EDINET CSV
+- `request_logs`
+- `ingest_logs`
+- `parse_logs`
+- `normalize_logs`
+
+This repository is designed so that ingest, normalization, and downstream serving can be developed incrementally on top of persisted raw data.
+
+---
+
+## Testing
+
 ```bash
 uv run pytest
 ```
 
-### lint
+You can also run targeted tests as needed.
+
+---
+
+## Lint
+
 ```bash
 uv run ruff check .
 ```
 
-## この phase の非対象
-- TDnet scraping 実装
-- company seed import
+---
 
-## EDINET sample ZIP ingest (Phase 1)
-この phase は **ローカル ZIP ingest のみ** 実装しています。EDINET API へのアクセスは行いません。
+## Scope of the current phase
 
-### sample ZIP 配置先
-- 固定 fixture path:
-  - `apps/edinet_ingest/tests/fixtures/Xbrl_Search_20250709_185613.zip`
-- `pytest` fixture はこの固定パスを直接参照し、自動生成は行いません。
+### In scope
+- EDINET ingest foundation
+- raw archive persistence
+- DB-backed fetch job management
+- readiness / health endpoints
+- downstream normalization-ready data model foundation
 
-### Windows 側元ファイルを WSL fixture にコピーする例
-```bash
-mkdir -p apps/edinet_ingest/tests/fixtures
-cp /path/to/Xbrl_Search_20250709_185613.zip \
-  apps/edinet_ingest/tests/fixtures/Xbrl_Search_20250709_185613.zip
-```
+### Out of scope for now
+- TDnet production ingestion
+- company / ticker universe import
+- TOPIX 1000 master maintenance
+- alert delivery
+- UI / dashboard
 
-### manifest を確認する
-```bash
-PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
-  uv run python -m edinet_ingest.cli.dump_manifest \
-  --zip apps/edinet_ingest/tests/fixtures/Xbrl_Search_20250709_185613.zip
-```
+---
 
-ファイルに出力する場合:
-```bash
-PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
-  uv run python -m edinet_ingest.cli.dump_manifest \
-  --zip apps/edinet_ingest/tests/fixtures/Xbrl_Search_20250709_185613.zip \
-  --output /tmp/edinet_manifest.json
-```
+## Notes
 
-### sample ZIP を DB へ ingest する
-```bash
-PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
-  uv run python -m edinet_ingest.cli.ingest_zip \
-  --zip apps/edinet_ingest/tests/fixtures/Xbrl_Search_20250709_185613.zip
-```
+This repository is intentionally being built in phases.
 
-### fixture ingest テストを実行する
-```bash
-uv run pytest apps/edinet_ingest/tests/test_manifest_and_parsers.py
-uv run pytest apps/edinet_ingest/tests/test_ingest_service.py
-```
+The current phase focuses on making EDINET retrieval reproducible and operable:
+- raw files are persisted
+- job state is tracked
+- failures are logged
+- retry / backfill workflows are possible
 
-## EDINET API downloader (Phase 2)
-Phase 2 では EDINET API v2 の downloader 基盤（list/fetch URL/params/response handling、raw 保存、doc_id 冪等化）を実装しています。  
-実 API 疎通は必須ではなく、mocked response テストで検証できます。
-
-### CLI
-```bash
-PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
-  uv run python -m edinet_ingest.cli.fetch_list --date 2026-03-20
-
-PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
-  uv run python -m edinet_ingest.cli.fetch_docs --date 2026-03-20
-
-PYTHONPATH=packages/common/src:apps/edinet_ingest/src \
-  uv run python -m edinet_ingest.cli.backfill --from 2026-03-20 --to 2026-03-22
-```
-
-### API キー未設定時の挙動
-- `EDINET_API_KEY` が未設定のまま実 API 呼び出しを行うと、CLI は明確なエラーを返し終了コード `2` で終了します。
-- mocked transport を使ったテストでは実 API キー不要で検証できます。
-
-### raw 保存レイアウト
-- `/home/rai/data/topix1000_disclosure/raw/edinet/{yyyy}/{mm}/{dd}/{doc_id}/list_response.json`
-- `/home/rai/data/topix1000_disclosure/raw/edinet/{yyyy}/{mm}/{dd}/{doc_id}/original.zip`
-- `/home/rai/data/topix1000_disclosure/raw/edinet/{yyyy}/{mm}/{dd}/{doc_id}/document.pdf`
-- `/home/rai/data/topix1000_disclosure/raw/edinet/{yyyy}/{mm}/{dd}/{doc_id}/csv.zip`
-
-### mocked downloader テスト
-```bash
-uv run pytest apps/edinet_ingest/tests/test_downloader_client.py
-uv run pytest apps/edinet_ingest/tests/test_downloader_services.py
-uv run pytest apps/edinet_ingest/tests/test_downloader_cli.py
-```
+The next logical steps are:
+1. harden the EDINET CSV normalization pipeline
+2. complete company / EDINET / ticker mapping
+3. add TOPIX 1000 universe management
+4. implement TDnet ingestion
+5. build the serving / alerting layer
